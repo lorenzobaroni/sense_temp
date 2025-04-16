@@ -12,12 +12,17 @@ pico_sdk_init()
 
 add_executable(${PROJECT_NAME}  
         sense_temp.c # Código principal em C
-        
+        lib/ssd1306.c       
         )
+
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/lib)
+pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR}/lib)
 
 target_link_libraries(${PROJECT_NAME} 
         pico_stdlib 
-
+        hardware_i2c
+        hardware_adc
+        hardware_pio
         )
 
 pico_enable_stdio_usb(${PROJECT_NAME} 1)

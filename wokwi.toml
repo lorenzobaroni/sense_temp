@@ -1,0 +1,4 @@
+[wokwi]
+version = 1
+firmware = 'build/sense_temp.uf2'
+elf = 'build/sense_temp.elf'

@@ -14,6 +14,7 @@ uint sm = 0;
 uint32_t RED   = 0x00FF00;
 uint32_t GREEN = 0xFF0000;
 uint32_t BLUE  = 0x0000FF;
+uint32_t WHITE  = 0xFFFFFF;
 
 void ssd1306_init(ssd1306_t *ssd, uint8_t width, uint8_t height, bool external_vcc, uint8_t address, i2c_inst_t *i2c) {
   ssd->width = width;

@@ -7,6 +7,14 @@ Este arquivo é responsável por enviar comandos e dados para o display OLED SSD
 #include "ssd1306.h"
 #include "font.h"
 
+ssd1306_t ssd;
+PIO pio = pio0;
+uint offset = 0;
+uint sm = 0;
+uint32_t RED   = 0x00FF00;
+uint32_t GREEN = 0xFF0000;
+uint32_t BLUE  = 0x0000FF;
+
 void ssd1306_init(ssd1306_t *ssd, uint8_t width, uint8_t height, bool external_vcc, uint8_t address, i2c_inst_t *i2c) {
   ssd->width = width;
   ssd->height = height;
@@ -19,7 +27,6 @@ void ssd1306_init(ssd1306_t *ssd, uint8_t width, uint8_t height, bool external_v
   ssd->ram_buffer[0] = 0x40;
   ssd->port_buffer[0] = 0x80;
 }
-
 
 void ssd1306_config(ssd1306_t *ssd) {
   ssd1306_command(ssd, SET_DISP | 0x00);
@@ -47,6 +54,43 @@ void ssd1306_config(ssd1306_t *ssd) {
   ssd1306_command(ssd, SET_CHARGE_PUMP);
   ssd1306_command(ssd, 0x14);
   ssd1306_command(ssd, SET_DISP | 0x01);
+}
+
+// Inicializa a Matriz WS2812
+void init_matrix() {
+  offset = pio_add_program(pio, &ws2812_program);
+  sm = pio_claim_unused_sm(pio, true);
+  ws2812_program_init(pio, sm, offset, MATRIX_PIN, 800000, false);
+}
+
+// Define a cor da matriz
+void set_matrix_color(uint32_t color) {
+    float brilho = 0.2f; // Valor máxido de 1
+
+    // Extrai os componentes GRB
+    uint8_t g = (color >> 16) & 0xFF;
+    uint8_t r = (color >> 8) & 0xFF;
+    uint8_t b = color & 0xFF;
+
+    // Aplica o fator de brilho
+    g = (uint8_t)(g * brilho);
+    r = (uint8_t)(r * brilho);
+    b = (uint8_t)(b * brilho);
+
+    // Recombina no formato GRB
+    uint32_t cor = (g << 16) | (r << 8) | b;
+
+    // Envia para todos os LEDs da matriz
+    for (int i = 0; i < NUM_LEDS; i++) {
+        ws2812_put_pixel(cor);
+    }
+}
+
+void ws2812_put_pixel(uint32_t pixel_grb) {
+  // Aguarda o FIFO estar disponível
+  while (pio_sm_is_tx_fifo_full(pio, sm));
+  // Envia os bits do pixel no formato GRB
+  pio_sm_put_blocking(pio, sm, pixel_grb << 8u);
 }
 
 void ssd1306_command(ssd1306_t *ssd, uint8_t command) {
@@ -85,13 +129,6 @@ void ssd1306_pixel(ssd1306_t *ssd, uint8_t x, uint8_t y, bool value) {
     ssd->ram_buffer[index] &= ~(1 << pixel);
 }
 
-/*
-void ssd1306_fill(ssd1306_t *ssd, bool value) {
-  uint8_t byte = value ? 0xFF : 0x00;
-  for (uint8_t i = 1; i < ssd->bufsize; ++i)
-    ssd->ram_buffer[i] = byte;
-}*/
-
 void ssd1306_fill(ssd1306_t *ssd, bool value) {
     // Itera por todas as posições do display
     for (uint8_t y = 0; y < ssd->height; ++y) {
@@ -100,8 +137,6 @@ void ssd1306_fill(ssd1306_t *ssd, bool value) {
         }
     }
 }
-
-
 
 void ssd1306_rect(ssd1306_t *ssd, uint8_t top, uint8_t left, uint8_t width, uint8_t height, bool value, bool fill) {
   for (uint8_t x = left; x < left + width; ++x) {

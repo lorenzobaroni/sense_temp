@@ -34,6 +34,7 @@ extern uint offset;
 extern uint32_t RED;
 extern uint32_t GREEN;
 extern uint32_t BLUE;
+extern uint32_t WHITE;
 
 typedef enum {
   SET_CONTRAST = 0x81,

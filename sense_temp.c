@@ -16,7 +16,8 @@
 
 // Configuração dos pinos do biossensor e botões
 #define SENSE 26 
-#define JOYSTICK_PB 22
+#define JOYSTICK_X_PIN 27
+#define JOYSTICK_Y_PIN 26
        
 #define LED_RED 13
 #define LED_GREEN 11
@@ -37,10 +38,12 @@
 
 // Variáveis Globais
 uint border_size = 2;
-volatile uint32_t ultimo_tempo_joy = 0;
 volatile uint32_t ultimo_tempo_A = 0;
 volatile uint32_t ultimo_tempo_B = 0;
 const uint32_t debounce = 200;
+uint16_t adc_x, adc_y;
+bool escolha_feita = false;
+bool menu_quadrado = false;
 
 void texto_temperatura(int temperatura_simulada){
     char buffer[32];
@@ -66,6 +69,19 @@ void tone(uint buzzer, uint frequencia, uint duracao) {
         sleep_us(meio_periodo);
         gpio_put(buzzer, 0); 
         sleep_us(meio_periodo);
+    }
+}
+
+// Função de callback para os botões A e B
+void button_callback(uint gpio, uint32_t events){
+    uint32_t tempo_atual = to_ms_since_boot(get_absolute_time());
+    if(gpio == BOTAO_A && (tempo_atual - ultimo_tempo_A > debounce)){
+        ultimo_tempo_A = tempo_atual;
+        menu_quadrado = true;
+    }
+    if(gpio == BOTAO_B && (tempo_atual - ultimo_tempo_B > debounce)){
+        ultimo_tempo_B = tempo_atual;
+        menu_quadrado = false;
     }
 }
 
@@ -109,44 +125,76 @@ int main()
     gpio_set_dir(BOTAO_B, GPIO_IN);
     gpio_pull_up(BOTAO_B);
 
-    gpio_init(JOYSTICK_PB);
-    gpio_set_dir(JOYSTICK_PB, GPIO_IN);
-    gpio_pull_up(JOYSTICK_PB);
-
     init_matrix();
+
+    gpio_set_irq_enabled_with_callback(BOTAO_A, GPIO_IRQ_EDGE_FALL, true, button_callback);
+    gpio_set_irq_enabled_with_callback(BOTAO_B, GPIO_IRQ_EDGE_FALL, true, button_callback);
 
     while (true) {
         uint16_t valor_adc = adc_read();
         float tensao = (valor_adc * 3.3) / 4095;
         float temperatura_simulada = (valor_adc / 4095.0f) * 50.0f;
 
+        // Exibe mensagens de depuração no terminal serial 
         DEBUG_PRINT("ADC: %d | Tensão: %.2fV | Temperatura Simulada: %.2f mg/dL\n", valor_adc, tensao, temperatura_simulada);
 
         if (temperatura_simulada < 15.0) {
-            set_matrix_color(BLUE);
+            set_matrix_color(BLUE); // Acende a matriz de led na cor azul
             gpio_put(LED_BLUE, 1);
             gpio_put(LED_GREEN, 0);
             gpio_put(LED_RED, 0);
         } else if (temperatura_simulada > 35.0) {
-            set_matrix_color(RED);
+            set_matrix_color(RED); // Acende a matriz de led na cor vermelha
+            gpio_put(LED_RED, 1);
             gpio_put(LED_BLUE, 0);
             gpio_put(LED_GREEN, 0);
-            gpio_put(LED_RED, 1);
-            tone(BUZZER, 500, 250);
+            tone(BUZZER, 500, 350);
         } else {
-            set_matrix_color(GREEN);
-            gpio_put(LED_BLUE, 0);
+            set_matrix_color(GREEN); // Acende a matriz de led na cor verde
             gpio_put(LED_GREEN, 1);
+            gpio_put(LED_BLUE, 0);
             gpio_put(LED_RED, 0);
         }
-
         // Limpar a tela
         ssd1306_fill(&ssd, false);
-        
+
+        // Mostra na tela a informações da temperatura
         texto_temperatura(temperatura_simulada);
+
         desenha_borda();
         ssd1306_send_data(&ssd);
 
+        while(menu_quadrado){
+            // Definição dos Leds em branco
+            gpio_put(LED_BLUE, 1);
+            gpio_put(LED_GREEN, 1);
+            gpio_put(LED_RED, 1);
+            set_matrix_color(WHITE);
+
+            // Leitura do eixo X do joystick
+            adc_select_input(1);
+            uint16_t adc_x = adc_read();
+
+            // Leitura do eixo Y do joystick
+            adc_select_input(0);
+            uint16_t adc_y = adc_read();
+
+            // Exibe mensagens de depuração no terminal serial 
+            DEBUG_PRINT("ADC X: %d | ADC Y: %d\n", adc_x, adc_y);
+
+            // Limpar a tela
+            ssd1306_fill(&ssd, false);
+
+            // Converte os valores do joystick para coordenadas do display OLED
+            uint8_t pos_x = (adc_x * (WIDTH - 8)) / 4095;
+            uint8_t pos_y = ((4095 - adc_y) * (HEIGHT - 8)) / 4095;
+
+            // Desenha um quadrado na posição do joystick
+            ssd1306_rect(&ssd, pos_y, pos_x, 8, 8, true, true);
+            
+            desenha_borda();
+            ssd1306_send_data(&ssd);
+        }
         sleep_ms(50);
     }
 }

@@ -3,6 +3,7 @@
 #include "lib/ssd1306.h"
 #include "hardware/adc.h"
 #include "lib/ws2812.pio.h"
+#include "hardware/pwm.h"
 
 // Habilita ou desabilita o modo de depuração
 #define DEBUG 1
@@ -29,6 +30,10 @@
 #define I2C_SDA 14
 #define I2C_SCL 15
 #define DISPLAY_ADDR 0x3C 
+
+// Configuração do PWM
+#define PWM_FREQ 50
+#define PWM_WRAP 4095
 
 // Variáveis Globais
 uint border_size = 2;
@@ -83,6 +88,15 @@ int main()
     adc_gpio_init(SENSE); 
     adc_select_input(0);
 
+    gpio_init(LED_BLUE);
+    gpio_set_dir(LED_BLUE, GPIO_OUT);
+
+    gpio_init(LED_RED);
+    gpio_set_dir(LED_RED, GPIO_OUT);
+
+    gpio_init(LED_GREEN);
+    gpio_set_dir(LED_GREEN, GPIO_OUT);
+
     gpio_init(BUZZER);
     gpio_set_dir(BUZZER, GPIO_OUT);
     gpio_put(BUZZER, 0);
@@ -110,11 +124,20 @@ int main()
 
         if (temperatura_simulada < 15.0) {
             set_matrix_color(BLUE);
+            gpio_put(LED_BLUE, 1);
+            gpio_put(LED_GREEN, 0);
+            gpio_put(LED_RED, 0);
         } else if (temperatura_simulada > 35.0) {
             set_matrix_color(RED);
+            gpio_put(LED_BLUE, 0);
+            gpio_put(LED_GREEN, 0);
+            gpio_put(LED_RED, 1);
             tone(BUZZER, 500, 250);
         } else {
             set_matrix_color(GREEN);
+            gpio_put(LED_BLUE, 0);
+            gpio_put(LED_GREEN, 1);
+            gpio_put(LED_RED, 0);
         }
 
         // Limpar a tela

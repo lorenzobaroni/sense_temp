@@ -4,6 +4,15 @@
 #include "hardware/adc.h"
 #include "lib/ws2812.pio.h"
 
+// Habilita ou desabilita o modo de depuração
+#define DEBUG 1
+
+#if DEBUG
+    #define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#else
+    #define DEBUG_PRINT(...)
+#endif
+
 // Configuração dos pinos do biossensor e botões
 #define SENSE 26 
 #define JOYSTICK_PB 22
@@ -21,26 +30,38 @@
 #define I2C_SCL 15
 #define DISPLAY_ADDR 0x3C 
 
-// Configuração da matriz de LEDs WS2812
-#define MATRIX_PIN 7
-#define NUM_LEDS 25
-
 // Variáveis Globais
-ssd1306_t ssd;
-PIO pio = pio0;
-uint offset = 0;
-uint sm = 0;
 uint border_size = 2;
 volatile uint32_t ultimo_tempo_joy = 0;
 volatile uint32_t ultimo_tempo_A = 0;
 volatile uint32_t ultimo_tempo_B = 0;
 const uint32_t debounce = 200;
 
-// Inicializa a Matriz WS2812
-void init_matrix() {
-    offset = pio_add_program(pio, &ws2812_program);
-    sm = pio_claim_unused_sm(pio, true);
-    ws2812_program_init(pio, sm, offset, MATRIX_PIN, 800000, false);
+void texto_temperatura(int temperatura_simulada){
+    char buffer[32];
+    ssd1306_draw_string(&ssd, "Temperatura: ", 10, 10);
+    sprintf(buffer, "%d mg/dL", temperatura_simulada);
+    ssd1306_draw_string(&ssd, buffer, 10, 20);
+}
+
+void desenha_borda(){
+    for (int i = 0; i < border_size; i++) {
+        ssd1306_rect(&ssd, i, i, WIDTH - (2 * i), HEIGHT - (2 * i), true, false);
+    }
+}
+
+// Função para gerar tons no buzzer
+void tone(uint buzzer, uint frequencia, uint duracao) {
+    uint32_t periodo = 1000000 / frequencia; 
+    uint32_t meio_periodo = periodo / 2;    
+    uint32_t ciclos = frequencia * duracao / 1000;
+
+    for (uint32_t i = 0; i < ciclos; i++) {
+        gpio_put(buzzer, 1); 
+        sleep_us(meio_periodo);
+        gpio_put(buzzer, 0); 
+        sleep_us(meio_periodo);
+    }
 }
 
 int main()
@@ -81,6 +102,28 @@ int main()
     init_matrix();
 
     while (true) {
-        sleep_ms(5);
+        uint16_t valor_adc = adc_read();
+        float tensao = (valor_adc * 3.3) / 4095;
+        float temperatura_simulada = (valor_adc / 4095.0f) * 50.0f;
+
+        DEBUG_PRINT("ADC: %d | Tensão: %.2fV | Temperatura Simulada: %.2f mg/dL\n", valor_adc, tensao, temperatura_simulada);
+
+        if (temperatura_simulada < 15.0) {
+            set_matrix_color(BLUE);
+        } else if (temperatura_simulada > 35.0) {
+            set_matrix_color(RED);
+            tone(BUZZER, 500, 250);
+        } else {
+            set_matrix_color(GREEN);
+        }
+
+        // Limpar a tela
+        ssd1306_fill(&ssd, false);
+        
+        texto_temperatura(temperatura_simulada);
+        desenha_borda();
+        ssd1306_send_data(&ssd);
+
+        sleep_ms(50);
     }
 }

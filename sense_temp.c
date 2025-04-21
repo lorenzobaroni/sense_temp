@@ -48,7 +48,11 @@ bool menu_quadrado = false;
 void texto_temperatura(int temperatura_simulada){
     char buffer[32];
     ssd1306_draw_string(&ssd, "Temperatura: ", 10, 10);
-    sprintf(buffer, "%d mg/dL", temperatura_simulada);
+    if(temperatura_simulada > 1){
+        sprintf(buffer, "%d Graus", temperatura_simulada);
+    } else {
+        sprintf(buffer, "%d Grau", temperatura_simulada);
+    }
     ssd1306_draw_string(&ssd, buffer, 10, 20);
 }
 

@@ -136,7 +136,7 @@ int main()
         float temperatura_simulada = (valor_adc / 4095.0f) * 50.0f;
 
         // Exibe mensagens de depuração no terminal serial 
-        DEBUG_PRINT("ADC: %d | Tensão: %.2fV | Temperatura Simulada: %.2f mg/dL\n", valor_adc, tensao, temperatura_simulada);
+        DEBUG_PRINT("ADC: %d | Tensão: %.2fV | Temperatura Simulada: %.2f\n", valor_adc, tensao, temperatura_simulada);
 
         if (temperatura_simulada < 15.0) {
             set_matrix_color(BLUE); // Acende a matriz de led na cor azul

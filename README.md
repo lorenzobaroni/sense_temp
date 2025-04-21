@@ -4,6 +4,12 @@ Este projeto simula a leitura de temperatura utilizando o joystick da placa BitD
 
 ---
 
+## 🎥 Demonstração
+O vídeo com a execução da simulação pode ser acessado em:
+[🔗 Link para o vídeo](https://www.youtube.com/watch?v=EBrDviSEQBU&ab_channel=LorenzoBaroni)
+
+---
+
 ## 🔧 Funcionalidades
 
 - 📊 **Leitura simulada de temperatura** usando o joystick (via ADC).

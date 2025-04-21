@@ -32,10 +32,6 @@
 #define I2C_SCL 15
 #define DISPLAY_ADDR 0x3C 
 
-// Configuração do PWM
-#define PWM_FREQ 50
-#define PWM_WRAP 4095
-
 // Variáveis Globais
 uint border_size = 2;
 volatile uint32_t ultimo_tempo_A = 0;
